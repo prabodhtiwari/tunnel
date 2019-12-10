@@ -1,0 +1,78 @@
+<html xmlns="http://www.w3.org/1999/html">
+<head>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<form name="port_form">
+    <input type="text" name="port">
+    <input type="submit" value="Set Port">
+</form>
+
+<div id="messages"></div>
+
+<script>
+    let socket = new WebSocket("wss://ws.prabodh.me/ws");
+
+    socket.onopen = function(e) {
+        console.log("[open] Connection established");
+        console.log("Sending to server");
+        // socket.send("My name is John");
+    };
+
+    socket.onmessage = function(event) {
+        console.log(`[message] Data received from server: ${event.data}`);
+    };
+
+    socket.onclose = function(event) {
+        if (event.wasClean) {
+            console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+        } else {
+            // e.g. server process killed or network down
+            // event.code is usually 1006 in this case
+            console.log('[close] Connection died');
+        }
+    };
+
+    socket.onerror = function(error) {
+        console.log(`[error] ${error.message}`);
+    };
+
+    var port
+    var  token
+
+    // send message from the form
+    document.forms.port_form.onsubmit = function() {
+        port = this.port.value;
+        console.log("port ", port);
+        return false;
+    };
+
+    // message received - show the message in div#messages
+    socket.onmessage = function(event) {
+        let data = JSON.parse(event.data);
+        console.log("data", data);
+        query = data.query
+
+        if(query) {
+            console.log(`http://localhost:${port}${query}`);
+            axios.get(`http://localhost:${port}${query}`)
+                .then((data) => {
+                    let messageElem = document.createElement('div');
+                    messageElem.textContent = `Request: ${query}   \t \t \t     Response: ${JSON.stringify(data.data)}`;
+                    document.getElementById('messages').prepend(messageElem);
+                    socket.send(JSON.stringify({"res": data.data, token: token}))
+                    console.log("data", JSON.stringify({"a": data.data}))
+                })
+                .catch((err) => console.log(err))
+        }
+
+        if(!token) {
+            token = data.token
+            let messageElem = document.createElement('div');
+            messageElem.textContent = `Token: ${token}`;
+            document.getElementById('messages').prepend(messageElem);
+        }
+    }
+</script>
+</body>
+</html>
